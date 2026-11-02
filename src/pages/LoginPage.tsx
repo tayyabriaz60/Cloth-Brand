@@ -47,7 +47,9 @@ export function LoginPage() {
         </div>
 
         <form
-          onSubmit={onSubmit}
+          onSubmit={(event) => {
+            void onSubmit(event);
+          }}
           noValidate
           className="flex flex-col gap-5 rounded-2xl bg-white p-6 shadow-sm"
         >

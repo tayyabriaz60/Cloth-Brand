@@ -6,13 +6,15 @@ export function useSlowFlag(active: boolean): boolean {
   const [slow, setSlow] = useState(false);
 
   useEffect(() => {
-    if (!active) {
+    if (!active) return;
+    const timer = window.setTimeout(() => {
+      setSlow(true);
+    }, SLOW_REQUEST_MS);
+    return () => {
+      window.clearTimeout(timer);
       setSlow(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setSlow(true), SLOW_REQUEST_MS);
-    return () => window.clearTimeout(timer);
+    };
   }, [active]);
 
-  return slow;
+  return active && slow;
 }

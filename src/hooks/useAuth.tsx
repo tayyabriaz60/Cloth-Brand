@@ -27,8 +27,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [queryClient],
   );
 
-  const signIn = useCallback((next: string) => setToken(next), []);
-  const signOut = useCallback(() => setToken(null), []);
+  const signIn = useCallback((next: string) => {
+    setToken(next);
+  }, []);
+  const signOut = useCallback(() => {
+    setToken(null);
+  }, []);
 
   const value = useMemo(() => ({ token, signIn, signOut }), [token, signIn, signOut]);
 

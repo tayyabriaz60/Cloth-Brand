@@ -12,7 +12,9 @@ export function getToken(): string | null {
 export function setToken(token: string | null): void {
   if (token) localStorage.setItem(STORAGE_KEYS.token, token);
   else localStorage.removeItem(STORAGE_KEYS.token);
-  listeners.forEach((listener) => listener(token));
+  listeners.forEach((listener) => {
+    listener(token);
+  });
 }
 
 export function subscribeToken(listener: Listener): () => void {
