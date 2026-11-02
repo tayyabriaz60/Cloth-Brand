@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --font-body-ur: "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --font-heading-ur: "Noto Nastaliq Urdu", "Noto Sans Arabic", serif;
+  --font-body-en: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+html {
+  font-size: 18px;
+}
+
+html[lang="ur"] body {
+  font-family: var(--font-body-ur);
+}
+
+html[lang="en"] body {
+  font-family: var(--font-body-en);
+}
+
+/* Nastaliq has tall ascenders/descenders; tight line-height clips it. */
+html[lang="ur"] .font-heading {
+  font-family: var(--font-heading-ur);
+  line-height: 2.2;
+}
+
+html[lang="en"] .font-heading {
+  font-family: var(--font-body-en);
+}
