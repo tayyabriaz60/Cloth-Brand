@@ -1,0 +1,132 @@
+---
+description: Frontend rules (React + Vite + TypeScript + Tailwind + shadcn). Senior-level guide.
+globs: src/**/*.{ts,tsx,css},index.html,vite.config.ts,vercel.json
+alwaysApply: false
+---
+
+# STACK (fixed, do not add libraries without asking)
+React 18, Vite, TypeScript (strict), Tailwind CSS, shadcn/ui,
+TanStack Query, react-router, react-hook-form + zod.
+No Redux, no axios, no moment, no UI kit besides shadcn.
+
+# FOLDER STRUCTURE
+src/
+  pages/            route-level screens (thin: compose hooks + components)
+  components/
+    ui/             shadcn primitives (do not edit casually)
+    <feature>/      bill/, products/, udhaar/, stock/, receipt/, layout/
+  hooks/            useProducts, useBills, useCustomers... (TanStack Query)
+  lib/
+    api/            client.ts + one file per resource (products.ts, bills.ts)
+    billing.ts      PURE bill math (subtotal, discount, total, change)
+    format.ts       money, quantity, date formatters
+    constants.ts
+  i18n/             ur.ts, en.ts, index.ts, LanguageContext
+  types/            zod schemas + inferred TS types
+  styles/           globals.css, print.css
+
+# LAYERS (one pattern per concern)
+UI component -> hook -> lib/api -> backend.
+- Pages and components NEVER call fetch. Only lib/api does.
+- Server data lives in TanStack Query. Do not copy it into useState.
+- UI-only state: useState/useReducer. Shared UI state: React context.
+- Query keys come from one factory (e.g. queryKeys.products.list(params)).
+- After a mutation, invalidate the exact keys it affects.
+- Do not use optimistic updates for anything involving money or stock.
+
+# TYPESCRIPT
+- strict mode. No `any`, no `as` casts to silence errors, no `// @ts-ignore`.
+- Define zod schemas in types/, derive types with z.infer. Validate API
+  responses at the boundary (lib/api) so bad data fails loudly there.
+- Money and quantity helpers live in lib/format.ts and lib/billing.ts only.
+  Round money with Math.round. Never use floats for rupees in storage.
+- Bill math must be pure functions with unit tests (Vitest).
+
+# COMPONENTS
+- Function components, named exports, props typed with an interface.
+- One component per file. Extract when a file passes ~150 lines.
+- No business logic inside JSX. Move it to lib/ or a hook.
+- Memoize only when you measured a problem (lists of 100+ products are ok).
+- Never use dangerouslySetInnerHTML. Always encodeURIComponent for wa.me text.
+
+# FORMS
+- react-hook-form + zod for every form. Show errors in the current language.
+- Number inputs: type="text" with inputMode="decimal", allow typing "3." and
+  "3.5" without the field fighting the user. Parse on blur/submit.
+- Autofocus the main field of each screen (search box on New Bill).
+- Enter key must work: Enter in search adds the first match.
+
+# I18N AND RTL (non-negotiable)
+- ZERO hardcoded user-facing strings in components. Use t("key").
+- ur.ts and en.ts have identical keys. Missing English falls back to Urdu.
+- Key naming: area.element.purpose (e.g. bill.total.label).
+- <html dir lang> updates on language change.
+- Use ONLY logical Tailwind classes: ms/me/ps/pe/start/end/text-start/
+  text-end/border-s/border-e/rounded-s/rounded-e.
+  NEVER ml/mr/pl/pr/left/right/text-left/text-right.
+- Directional icons (arrows, chevrons) must flip in RTL (rtl:rotate-180).
+- Fonts: Noto Nastaliq Urdu for headings only (give it generous line-height
+  so it is not clipped), Noto Sans Arabic for body and numbers, Inter for
+  English. Use font-display: swap and real fallback stacks.
+- Format numbers with Intl using numberingSystem "latn". Currency: "Rs 1,250".
+- Test every screen in both languages before saying it is done.
+
+# UX FOR LOW-TECH SHOPKEEPERS
+- Primary action buttons min-height 56px, secondary min 44px, thumb reachable
+  on phones. Big readable text (base 18px, totals 32px+).
+- One tap for common actions. Avoid modals; prefer inline panels. For
+  destructive actions (delete a bill line) act immediately and show an
+  "Undo" toast instead of a confirm dialog.
+- Never rely on color alone: pair color with text or icon.
+- Colors: green = confirm, red = delete/udhaar/danger, blue = normal.
+- Every screen needs: loading state (skeleton), empty state (helpful text),
+  and error state (bilingual message + retry).
+- Totals use aria-live="polite". Visible focus rings. Labels on all inputs.
+- Do not hide the shop's most common path (New Bill) behind menus.
+
+# BILL DRAFT SAFETY
+- The bill being built is held in a useReducer + context and persisted to
+  localStorage on every change, so refresh or phone sleep never loses it.
+- Create the bill UUID (crypto.randomUUID) when the bill starts. Reuse it on
+  retry. Disable "Make Bill" while saving.
+- On any save error, KEEP the bill on screen and show a clear message.
+  Clear the draft only after the server confirms.
+
+# API CLIENT (lib/api/client.ts)
+- Base URL from import.meta.env.VITE_API_URL. Attach JWT. Throw a typed
+  ApiError (status, code, message).
+- If a request takes > 3s, surface a "server is waking up" message (free
+  hosting sleeps) and allow retry. Handle offline with a bilingual message.
+- 401 -> clear token and go to login. Never log tokens or passwords.
+
+# PERFORMANCE (cheap Android phones)
+- Lazy-load routes. Initial JS target < 250 KB gzipped.
+- Debounce search ~150ms. Filter the cached product list on the client.
+- Images: lazy-load, set width/height, serve WebP (<150 KB, max 800px,
+  resized in the browser before upload).
+- No heavy libraries for small jobs (no chart lib: use plain divs).
+
+# PRINTING (receipt)
+- Browser window.print only. print.css hides everything except <Receipt/>.
+- @page size 80mm auto (or 58mm per shop setting), margin 0, black on white,
+  no images/colors/shadows. Urdu receipt uses Noto Sans Arabic, RTL.
+- Preview the receipt on screen at the real width.
+
+# SECURITY (frontend)
+- Never put secrets in the frontend. Only VITE_API_URL is allowed.
+- Hide owner-only UI for cashiers, but remember the backend is the real guard.
+- Validate and trim user input; never trust data from localStorage blindly
+  (parse with zod, fall back to defaults).
+
+# TESTING
+- Vitest for lib/billing.ts and lib/format.ts (discount %, decimals,
+  rounding, udhaar balance display). Keep tests small and fast.
+- Do not write brittle snapshot tests.
+
+# DEFINITION OF DONE (run before saying "done")
+1. `npm run build` and `tsc --noEmit` pass with no errors or warnings.
+2. Lint passes. No unused imports or variables.
+3. Checked at 360px phone width and desktop, in Urdu AND English.
+4. No hardcoded strings, no left/right Tailwind classes.
+5. Loading, empty, and error states exist.
+6. List the files changed and how I can test it in 3 steps.
